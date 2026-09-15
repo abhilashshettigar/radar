@@ -18,6 +18,12 @@ Radar is a modern Kubernetes visibility tool — local-first, no account require
 - Never create, move, or delete Git tags or GitHub Releases; dispatch release or publish workflows; or publish binaries, container images, npm packages, package-manager artifacts, Helm charts, or other distribution artifacts without explicit user approval naming the exact artifact, version, and action.
 - Approval to implement a change, open or merge a PR, or prepare release changes is not authorization to publish. If release authorization is ambiguous, stop and ask.
 
+## Versioning
+
+- The version is a build-time value, not a committed file. It is injected via `-X main.version=<version>` and defaults to `dev`: see `internal/version/version.go` (`Current = "dev"`), the `Dockerfile` (`ARG VERSION=dev`), and `.goreleaser.yaml` (`-X main.version={{.Version}}`).
+- Whenever you make functional changes (features, fixes, behavior), update the version instead of leaving builds on `dev`. Use semver: bump the patch for fixes, the minor for new/noticeable features. Pass the new version at build time (`-ldflags "-X main.version=<v>"` or `docker build --build-arg VERSION=<v>`); goreleaser derives it from the git tag instead.
+- Do the bump as part of the change that motivated it — a build that still reports `dev` after a real change is incomplete. Updating the build version is not the same as publishing a release (tags/releases still require explicit approval per the section above).
+
 ## Reference Docs — MUST READ before making changes
 
 Not everything is in this file. The following files contain critical details that are **not duplicated here**. You MUST read them when working in the relevant area — do not guess or rely on memory.
