@@ -27,7 +27,7 @@ func Authenticate(cfg Config) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Exempt paths that don't require auth
-			if isExemptPath(r.URL.Path) {
+			if isExemptPath(r.URL.Path) || (cfg.MCPOpen && isOpenMCPReadonlyPath(r.URL.Path)) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -199,6 +199,15 @@ func isExemptPath(path string) bool {
 		return true
 	}
 	return false
+}
+
+// isOpenMCPReadonlyPath reports whether the read-only MCP endpoint should be
+// served without authentication. Only meaningful when cfg.MCPOpen is set, and
+// deliberately inert under cloud mode — there the full handler is reachable
+// only over the authenticated tunnel, so an open exemption would be moot and
+// must not weaken the local-listener defense in depth.
+func isOpenMCPReadonlyPath(path string) bool {
+	return !cloudMode() && strings.HasPrefix(path, "/mcp-readonly")
 }
 
 // isSoftAuthPath returns true for paths that should attempt auth but not

@@ -71,6 +71,66 @@ func TestMiddleware_ExemptPaths(t *testing.T) {
 	}
 }
 
+func TestMiddleware_MCPOpen(t *testing.T) {
+	cfg := proxyConfig()
+	cfg.MCPOpen = true
+	mw := Authenticate(cfg)
+	handler := mw(http.HandlerFunc(echoUser))
+
+	tests := []struct {
+		path string
+		want int
+	}{
+		{"/mcp-readonly", http.StatusNoContent},          // open when MCPOpen
+		{"/mcp-readonly/anything", http.StatusNoContent}, // prefix exemption
+		{"/mcp", http.StatusUnauthorized},                // write endpoint always requires auth
+		{"/mcp-investigation", http.StatusUnauthorized},  // internal endpoint stays protected
+		{"/api/topology", http.StatusUnauthorized},       // other API still requires auth
+		{"/api/resources/pods", http.StatusUnauthorized}, // other API still requires auth
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			req := httptest.NewRequest("GET", tt.path, nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			if rec.Code != tt.want {
+				t.Errorf("path %s: status = %d, want %d", tt.path, rec.Code, tt.want)
+			}
+		})
+	}
+}
+
+func TestMiddleware_MCPOpen_Disabled(t *testing.T) {
+	cfg := proxyConfig() // MCPOpen defaults to false
+	mw := Authenticate(cfg)
+	handler := mw(http.HandlerFunc(echoUser))
+
+	req := httptest.NewRequest("GET", "/mcp-readonly", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401 when MCPOpen is false", rec.Code)
+	}
+}
+
+func TestMiddleware_MCPOpen_CloudModeIgnored(t *testing.T) {
+	t.Setenv("RADAR_CLOUD_MODE", "true")
+	cfg := proxyConfig()
+	cfg.MCPOpen = true
+	mw := Authenticate(cfg)
+	handler := mw(http.HandlerFunc(echoUser))
+
+	req := httptest.NewRequest("GET", "/mcp-readonly", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401 under cloud mode even with MCPOpen", rec.Code)
+	}
+}
+
 func TestMiddleware_ProxyHeaders(t *testing.T) {
 	mw := Authenticate(proxyConfig())
 	handler := mw(http.HandlerFunc(echoUser))

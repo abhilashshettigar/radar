@@ -138,6 +138,7 @@ func main() {
 	beylaJobSelector := flag.String("beyla-job-selector", "", `PromQL job-label matcher fragment Beyla traffic queries use to scope Prometheus series, e.g. 'job=~"my-beyla.*"' (empty = built-in default matching *beyla* or *alloy* job names)`)
 	// MCP server
 	noMCP := flag.Bool("no-mcp", !fileCfg.MCPEnabledOr(true), "Disable MCP (Model Context Protocol) server for AI tools")
+	mcpOpen := flag.Bool("mcp-open", false, "Expose the read-only MCP endpoint (/mcp-readonly) without authentication even when --auth-mode is proxy/oidc. Exposes read-only cluster data to anyone who can reach the listener; enable only behind a trusted network boundary.")
 	mcpCatalogStdio := flag.Bool("mcp-catalog-stdio", false, "Start only the MCP catalog over stdio for registry/inspector introspection; skips Kubernetes initialization")
 	mcpCatalogOnly := flag.Bool("mcp-catalog-only", false, "Start only the MCP endpoint for registry/inspector catalog introspection; skips Kubernetes initialization")
 	// Auth flags
@@ -217,6 +218,9 @@ func main() {
 		*authUserHeader = "X-Forwarded-User"
 		*authGroupsHeader = "X-Forwarded-Groups"
 		log.Printf("[cloud] RADAR_CLOUD_MODE=true: auth-mode forced to proxy, trusting tunnel-supplied identity headers")
+	}
+	if *mcpOpen && *authMode != "none" && !cloudMode {
+		log.Printf("WARNING: --mcp-open exposes /mcp-readonly WITHOUT authentication; it runs with the ServiceAccount/kubeconfig identity and is reachable by anyone who can reach --listen-address")
 	}
 	if *showVersion {
 		fmt.Printf("radar %s\n", version)
@@ -379,6 +383,7 @@ func main() {
 		CloudTunnelConfigured:    *cloudURL != "",
 		AuthConfig: auth.Config{
 			Mode:                      *authMode,
+			MCPOpen:                   *mcpOpen,
 			Secret:                    *authSecret,
 			CookieTTL:                 *authCookieTTL,
 			UserHeader:                *authUserHeader,

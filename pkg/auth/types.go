@@ -22,6 +22,12 @@ type Config struct {
 	GroupsHeader   string // default "X-Forwarded-Groups"
 	ProxyLogoutURL string // optional, URL the logout button redirects to so the upstream proxy session is torn down (e.g. oauth2-proxy /oauth2/sign_out)
 
+	// MCPOpen, when true, exempts the read-only MCP endpoint (/mcp-readonly)
+	// from authentication even when Mode is proxy/oidc. The write-capable /mcp
+	// endpoint is never exempted. Inert when Mode is "none" or in cloud mode.
+	// Exposes read-only cluster data to anyone who can reach the listener.
+	MCPOpen bool
+
 	// Session revocation (optional, used by backchannel logout)
 	Revoker SessionRevoker
 
