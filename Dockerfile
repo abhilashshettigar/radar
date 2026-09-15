@@ -26,7 +26,9 @@ RUN npm run build --workspace=web
 # =============================================================================
 # Stage 2: Build Go backend
 # =============================================================================
-FROM golang:1.26-alpine AS backend-builder
+# Pin the exact Go patch so `full` builds embed a stdlib free of the known
+# Go 1.26.x CVEs (fixed in 1.26.6). Bump alongside any Go toolchain upgrade.
+FROM golang:1.26.6-alpine AS backend-builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
